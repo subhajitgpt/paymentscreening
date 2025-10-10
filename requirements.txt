@@ -1,0 +1,22 @@
+# Core app
+Flask>=3.0,<4.0
+gunicorn>=21.2          # optional prod server
+
+# Similarity & string metrics
+rapidfuzz>=3.9
+jellyfish>=1.0
+textdistance>=4.6
+python-Levenshtein>=0.25
+
+# NLP (pick one: spaCy or NLTK)
+spacy>=3.7
+# nltk>=3.9
+
+# Address & normalization
+postal>=1.1             # requires libpostal system package
+# usaddress>=0.5.10     # US-only alternative
+
+pycountry>=24.6.1
+dateparser>=1.2.0
+scikit-learn>=1.5       # optional for TF-IDF cosine
+# dedupe>=2.0           # optional ML record linkage
