@@ -20,3 +20,10 @@ pycountry>=24.6.1
 dateparser>=1.2.0
 scikit-learn>=1.5       # optional for TF-IDF cosine
 # dedupe>=2.0           # optional ML record linkage
+
+
+python-dotenv>=1.0.1
+llama-cpp-python>=0.2.90
+sentence-transformers>=3.0.1
+chromadb>=0.5.5
+numpy>=1.26.0
