@@ -1,0 +1,13 @@
+{
+  "payer_name": "Mohammed Al-Hameed",
+  "payer_address": "King Faisal Road, Manama, Bahrain",
+  "payer_country": "BH",
+  "payer_dob": "1978-04-09",
+  "benef_name": "Tech Solutions Ltd",
+  "benef_address": "789 Tech Park, Singapore",
+  "benef_country": "SG",
+  "benef_dob": "",
+  "amount": 25000.00,
+  "currency": "USD",
+  "reference": "Contract-2025-SG"
+}

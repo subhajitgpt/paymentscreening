@@ -1,0 +1,180 @@
+{
+  "test_scenarios": {
+    "scenario_1_high_risk_match": {
+      "description": "High risk match with watchlist entity - should ESCALATE",
+      "payload": {
+        "payer_name": "Global Trade LLC",
+        "payer_address": "PO Box 12345, Dubai, UAE",
+        "payer_country": "AE",
+        "payer_dob": "",
+        "benef_name": "John Smith",
+        "benef_address": "123 Main Street, London, UK",
+        "benef_country": "GB",
+        "benef_dob": "",
+        "amount": 12500.00,
+        "currency": "USD",
+        "reference": "Invoice 2025-10-ACME"
+      }
+    },
+    
+    "scenario_2_sanctioned_country": {
+      "description": "Beneficiary in sanctioned country (Ukraine) - should ESCALATE",
+      "payload": {
+        "payer_name": "ABC Corporation",
+        "payer_address": "456 Business Blvd, New York, USA",
+        "payer_country": "US",
+        "payer_dob": "",
+        "benef_name": "Olena Petrenko-Kovalenko",
+        "benef_address": "Kreschatyk 22, Kyiv, Ukraine",
+        "benef_country": "UA",
+        "benef_dob": "1990-02-01",
+        "amount": 8500.00,
+        "currency": "EUR",
+        "reference": "Payment-2025-UA-001"
+      }
+    },
+    
+    "scenario_3_watchlist_name_match": {
+      "description": "Name similar to Mohammad Al Hamed on watchlist - should ESCALATE",
+      "payload": {
+        "payer_name": "Mohammed Al-Hameed",
+        "payer_address": "King Faisal Road, Manama, Bahrain",
+        "payer_country": "BH",
+        "payer_dob": "1978-04-09",
+        "benef_name": "Tech Solutions Ltd",
+        "benef_address": "789 Tech Park, Singapore",
+        "benef_country": "SG",
+        "benef_dob": "",
+        "amount": 25000.00,
+        "currency": "USD",
+        "reference": "Contract-2025-SG"
+      }
+    },
+    
+    "scenario_4_low_risk": {
+      "description": "Low risk transaction with no matches - should RELEASE",
+      "payload": {
+        "payer_name": "ABC Trading Company",
+        "payer_address": "100 Market Street, San Francisco, USA",
+        "payer_country": "US",
+        "payer_dob": "",
+        "benef_name": "XYZ Services Ltd",
+        "benef_address": "200 Business Road, London, UK",
+        "benef_country": "GB",
+        "benef_dob": "",
+        "amount": 5000.00,
+        "currency": "USD",
+        "reference": "Invoice-2025-001"
+      }
+    },
+    
+    "scenario_5_pakistan_address": {
+      "description": "Address mentions Pakistan (sanctioned) - should ESCALATE",
+      "payload": {
+        "payer_name": "Import Export LLC",
+        "payer_address": "Trade Center, Dubai, UAE",
+        "payer_country": "AE",
+        "payer_dob": "",
+        "benef_name": "Hafiz Mohammed",
+        "benef_address": "Karachi, Pakistan",
+        "benef_country": "PK",
+        "benef_dob": "1990-02-01",
+        "amount": 15000.00,
+        "currency": "USD",
+        "reference": "Trade-PK-2025"
+      }
+    },
+    
+    "scenario_6_china_watchlist": {
+      "description": "Name similar to Zhang Wei (China, OFAC SDN) - should ESCALATE",
+      "payload": {
+        "payer_name": "Regular Company Inc",
+        "payer_address": "Corporate Plaza, Toronto, Canada",
+        "payer_country": "CA",
+        "payer_dob": "",
+        "benef_name": "Wei Chang",
+        "benef_address": "Nanjing West Road, Shanghai, China",
+        "benef_country": "CN",
+        "benef_dob": "1983-11-23",
+        "amount": 30000.00,
+        "currency": "USD",
+        "reference": "CN-Payment-2025"
+      }
+    },
+    
+    "scenario_7_minimal_match": {
+      "description": "Minimal similarity to watchlist - should RELEASE",
+      "payload": {
+        "payer_name": "Standard Business Corp",
+        "payer_address": "1000 Enterprise Way, Seattle, USA",
+        "payer_country": "US",
+        "payer_dob": "",
+        "benef_name": "Universal Trading Ltd",
+        "benef_address": "50 Commerce Street, Melbourne, Australia",
+        "benef_country": "AU",
+        "benef_dob": "",
+        "amount": 7500.00,
+        "currency": "AUD",
+        "reference": "AU-INV-2025-100"
+      }
+    },
+    
+    "scenario_8_iran_sanctioned": {
+      "description": "Iran sanctioned country - should ESCALATE",
+      "payload": {
+        "payer_name": "European Trading GmbH",
+        "payer_address": "Hauptstrasse 45, Berlin, Germany",
+        "payer_country": "DE",
+        "payer_dob": "",
+        "benef_name": "Tehran Import Export",
+        "benef_address": "Tehran Business District, Iran",
+        "benef_country": "IR",
+        "benef_dob": "",
+        "amount": 20000.00,
+        "currency": "EUR",
+        "reference": "IR-Trade-2025"
+      }
+    }
+  },
+  
+  "postman_collection_info": {
+    "instructions": "Import these test scenarios into Postman",
+    "steps": [
+      "1. Start the Flask API: python payment_screening_api.py",
+      "2. Open Postman and create a new request",
+      "3. Set method to POST",
+      "4. Set URL to: http://127.0.0.1:5000/screen",
+      "5. Go to Headers tab, add: Content-Type = application/json",
+      "6. Go to Body tab, select 'raw' and 'JSON'",
+      "7. Copy any payload from test_scenarios above",
+      "8. Click Send to test"
+    ],
+    "additional_endpoints": {
+      "health_check": "GET http://127.0.0.1:5000/health",
+      "api_info": "GET http://127.0.0.1:5000/",
+      "get_watchlist": "GET http://127.0.0.1:5000/watchlist",
+      "get_sanctioned_countries": "GET http://127.0.0.1:5000/sanctioned-countries"
+    }
+  },
+  
+  "sample_request_for_postman": {
+    "method": "POST",
+    "url": "http://127.0.0.1:5000/screen",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "payer_name": "Global Trade LLC",
+      "payer_address": "PO Box 12345, Dubai, UAE",
+      "payer_country": "AE",
+      "payer_dob": "",
+      "benef_name": "Olena Petrenko-Kovalenko",
+      "benef_address": "Kreschatyk 22, Kyiv, Ukraine",
+      "benef_country": "UA",
+      "benef_dob": "1990-02-01",
+      "amount": 12500.00,
+      "currency": "USD",
+      "reference": "Invoice 2025-10-ACME"
+    }
+  }
+}

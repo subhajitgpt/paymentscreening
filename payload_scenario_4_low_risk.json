@@ -1,0 +1,13 @@
+{
+  "payer_name": "ABC Trading Company",
+  "payer_address": "100 Market Street, San Francisco, USA",
+  "payer_country": "US",
+  "payer_dob": "",
+  "benef_name": "XYZ Services Ltd",
+  "benef_address": "200 Business Road, London, UK",
+  "benef_country": "GB",
+  "benef_dob": "",
+  "amount": 5000.00,
+  "currency": "USD",
+  "reference": "Invoice-2025-001"
+}

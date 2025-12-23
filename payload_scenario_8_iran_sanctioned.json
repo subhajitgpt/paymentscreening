@@ -1,0 +1,13 @@
+{
+  "payer_name": "European Trading GmbH",
+  "payer_address": "Hauptstrasse 45, Berlin, Germany",
+  "payer_country": "DE",
+  "payer_dob": "",
+  "benef_name": "Tehran Import Export",
+  "benef_address": "Tehran Business District, Iran",
+  "benef_country": "IR",
+  "benef_dob": "",
+  "amount": 20000.00,
+  "currency": "EUR",
+  "reference": "IR-Trade-2025"
+}

@@ -1,0 +1,13 @@
+{
+  "payer_name": "Standard Business Corp",
+  "payer_address": "1000 Enterprise Way, Seattle, USA",
+  "payer_country": "US",
+  "payer_dob": "",
+  "benef_name": "Universal Trading Ltd",
+  "benef_address": "50 Commerce Street, Melbourne, Australia",
+  "benef_country": "AU",
+  "benef_dob": "",
+  "amount": 7500.00,
+  "currency": "AUD",
+  "reference": "AU-INV-2025-100"
+}

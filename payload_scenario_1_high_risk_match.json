@@ -1,0 +1,13 @@
+{
+  "payer_name": "Global Trade LLC",
+  "payer_address": "PO Box 12345, Dubai, UAE",
+  "payer_country": "AE",
+  "payer_dob": "",
+  "benef_name": "John Smith",
+  "benef_address": "123 Main Street, London, UK",
+  "benef_country": "GB",
+  "benef_dob": "",
+  "amount": 12500.00,
+  "currency": "USD",
+  "reference": "Invoice 2025-10-ACME"
+}

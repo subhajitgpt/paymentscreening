@@ -1,0 +1,13 @@
+{
+  "payer_name": "ABC Corporation",
+  "payer_address": "456 Business Blvd, New York, USA",
+  "payer_country": "US",
+  "payer_dob": "",
+  "benef_name": "Olena Petrenko-Kovalenko",
+  "benef_address": "Kreschatyk 22, Kyiv, Ukraine",
+  "benef_country": "UA",
+  "benef_dob": "1990-02-01",
+  "amount": 8500.00,
+  "currency": "EUR",
+  "reference": "Payment-2025-UA-001"
+}

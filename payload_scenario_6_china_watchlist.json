@@ -1,0 +1,13 @@
+{
+  "payer_name": "Regular Company Inc",
+  "payer_address": "Corporate Plaza, Toronto, Canada",
+  "payer_country": "CA",
+  "payer_dob": "",
+  "benef_name": "Wei Chang",
+  "benef_address": "Nanjing West Road, Shanghai, China",
+  "benef_country": "CN",
+  "benef_dob": "1983-11-23",
+  "amount": 30000.00,
+  "currency": "USD",
+  "reference": "CN-Payment-2025"
+}

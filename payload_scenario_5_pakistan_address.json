@@ -1,0 +1,13 @@
+{
+  "payer_name": "Import Export LLC",
+  "payer_address": "Trade Center, Dubai, UAE",
+  "payer_country": "AE",
+  "payer_dob": "",
+  "benef_name": "Hafiz Mohammed",
+  "benef_address": "Karachi, Pakistan",
+  "benef_country": "PK",
+  "benef_dob": "1990-02-01",
+  "amount": 15000.00,
+  "currency": "USD",
+  "reference": "Trade-PK-2025"
+}
