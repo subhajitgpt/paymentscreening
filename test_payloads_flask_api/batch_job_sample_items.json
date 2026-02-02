@@ -1,0 +1,74 @@
+{
+  "meta": {
+    "batch_name": "sample_batch_job_mixed",
+    "created_at": "2026-02-02",
+    "notes": "Upload this file in paymentscreening_v4.py → Main (KPIs + Batch) → Batch Screening (Async Job)."
+  },
+  "items": [
+    {
+      "payer_name": "Global Trade LLC",
+      "payer_address": "PO Box 12345, Dubai, UAE",
+      "payer_country": "AE",
+      "payer_dob": "",
+      "benef_name": "John Smith",
+      "benef_address": "123 Main Street, London, UK",
+      "benef_country": "GB",
+      "benef_dob": "",
+      "amount": 12500.0,
+      "currency": "USD",
+      "reference": "BATCH-1-high-risk-match"
+    },
+    {
+      "payer_name": "ABC Corporation",
+      "payer_address": "456 Business Blvd, New York, USA",
+      "payer_country": "US",
+      "payer_dob": "",
+      "benef_name": "Olena Petrenko-Kovalenko",
+      "benef_address": "Kreschatyk 22, Kyiv, Ukraine",
+      "benef_country": "UA",
+      "benef_dob": "1990-02-01",
+      "amount": 8500.0,
+      "currency": "EUR",
+      "reference": "BATCH-2-sanctioned-country"
+    },
+    {
+      "payer_name": "ABC Trading Company",
+      "payer_address": "100 Market Street, San Francisco, USA",
+      "payer_country": "US",
+      "payer_dob": "",
+      "benef_name": "XYZ Services Ltd",
+      "benef_address": "200 Business Road, London, UK",
+      "benef_country": "GB",
+      "benef_dob": "",
+      "amount": 5000.0,
+      "currency": "USD",
+      "reference": "BATCH-3-low-risk"
+    },
+    {
+      "payer_name": "Import Export LLC",
+      "payer_address": "Trade Center, Dubai, UAE",
+      "payer_country": "AE",
+      "payer_dob": "",
+      "benef_name": "Hafiz Mohammed",
+      "benef_address": "Karachi, Pakistan",
+      "benef_country": "PK",
+      "benef_dob": "1990-02-01",
+      "amount": 15000.0,
+      "currency": "USD",
+      "reference": "BATCH-4-sanctioned-address-country"
+    },
+    {
+      "payer_name": "European Trading GmbH",
+      "payer_address": "Hauptstrasse 45, Berlin, Germany",
+      "payer_country": "DE",
+      "payer_dob": "",
+      "benef_name": "Tehran Import Export",
+      "benef_address": "Tehran Business District, Iran",
+      "benef_country": "IR",
+      "benef_dob": "",
+      "amount": 20000.0,
+      "currency": "EUR",
+      "reference": "BATCH-5-iran-sanctioned"
+    }
+  ]
+}

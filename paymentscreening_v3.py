@@ -9,38 +9,38 @@ app = Flask(__name__)
 # Dummy sanctions / watchlist
 # -----------------------------
 WATCHLIST = [
+    # {
+    #     "name": "Mohammad Al Hamed",
+    #     "aka": ["Mohammed Al-Hameed", "Mohamad Alhammad"],
+    #     "address": "12 King Faisal Road, Manama, Bahrain",
+    #     "country": "BH",
+    #     "dob": "1978-04-09",
+    #     "list": "UN Sanctions",
+    #     "category": "Terrorism"
+    # },
+    # {
+    #     "name": "Zhang Wei",
+    #     "aka": ["Wei Chang", "Z. Wei"],
+    #     "address": "66 Nanjing West Road, Jing'an, Shanghai, China",
+    #     "country": "CN",
+    #     "dob": "1983-11-23",
+    #     "list": "OFAC SDN",
+    #     "category": "Proliferation"
+    # },
     {
-        "name": "Mohammad Al Hamed",
-        "aka": ["Mohammed Al-Hameed", "Mohamad Alhammad"],
-        "address": "12 King Faisal Road, Manama, Bahrain",
-        "country": "BH",
-        "dob": "1978-04-09",
-        "list": "UN Sanctions",
-        "category": "Terrorism"
-    },
-    {
-        "name": "Zhang Wei",
-        "aka": ["Wei Chang", "Z. Wei"],
-        "address": "66 Nanjing West Road, Jing'an, Shanghai, China",
-        "country": "CN",
-        "dob": "1983-11-23",
-        "list": "OFAC SDN",
-        "category": "Proliferation"
-    },
-    {
-        "name": "Hafiz Mohammed",
-        "aka": ["Karachi", "Pakistan"],
-        "address": "Karachi, Pakistan",
-        "country": "PK",
+        "name": "ABC",
+        "aka": ["sanction hit", "sanction hit"],
+        "address": "sanction hit, sanction hit",
+        "country": "sanction hit",
         "dob": "1990-02-01",
-        "list": "EU Consolidated",
+        "list": "Consolidated",
         "category": "Corruption"
     },
     {
-        "name": "Global Trade LLC",
+        "name": "XYZ",
         "aka": ["Global Trading Limited", "Global Trade Co."],
-        "address": "PO Box 12345, Dubai, United Arab Emirates",
-        "country": "AE",
+        "address": "xyzcity",
+        "country": "xyzcity",
         "dob": None,
         "list": "Internal Watch",
         "category": "Adverse Media"
@@ -50,7 +50,7 @@ WATCHLIST = [
 # -----------------------------
 # Sanctioned countries (incl. alias)
 # -----------------------------
-SANCTIONED_COUNTRIES_RAW = ["pakistan", "iran", "syria", "ukraine", "cuba", "south korea"]
+SANCTIONED_COUNTRIES_RAW = ["pakistan", "iran", "syria", "ukraine", "cuba", "north korea"]
 SANCTION_ALIASES = {"ukraise": "ukraine", "u k r a i s e": "ukraine"}
 
 def _norm(s: str) -> str:
@@ -476,7 +476,7 @@ TEMPLATE = """
       <div class="muted mini">Dummy data • Jaro-Winkler + Jaccard matching • Threshold: 0.80 → Escalate</div>
       <div class="muted mini">
         Sanction list (as provided):
-        {% for c in sanctioned_display %}<span class="badge text-bg-dark me-1">{{ c }}</span>{% endfor %}
+        
       </div>
       <div class="muted mini">Hard rule: If party country is sanctioned or address mentions a sanctioned country → <b>ESCALATE (Sanctioned Country)</b></div>
     </div>
