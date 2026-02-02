@@ -14,6 +14,7 @@ This system screens payment transactions against:
 
 ```
 PaymentScreening/
+├── paymentscreening_v4.py          # Flask Web UI (Agentic flow + KPIs + Batch jobs + audit)
 ├── paymentscreening_v3.py          # Flask Web UI Application
 ├── payment_screening_api.py         # Flask REST API
 ├── test_payloads.json              # Test scenarios documentation
@@ -26,13 +27,69 @@ PaymentScreening/
 │   ├── payload_scenario_6_china_watchlist.json
 │   ├── payload_scenario_7_minimal_match.json
 │   └── payload_scenario_8_iran_sanctioned.json
+│   └── batch_job_sample_items.json  # Sample batch file for v4 uploads
 ├── requirements.txt                # Python dependencies
 └── README.md                       # This file
 ```
 
 ---
 
-## 1. Flask Web UI Application
+## 1. Agentic Flask Web UI (v4)
+
+**File**: `paymentscreening_v4.py`
+
+### Description
+
+An agentic-style screening UI that follows an end-to-end flow:
+
+**Sample data → Algorithms → Scoring → Automated decision → Explanation**
+
+It also adds batch screening with asynchronous jobs, KPI tracking, and an audit trail.
+
+### Features
+
+- ✅ **Two-tab UI**
+  - **Main (KPIs + Batch)**: KPIs across all batch jobs + JSON batch upload
+  - **Jobs + Audit Trail**: job status, per-job results, and audit events
+- ✅ **Agentic flow**: step-by-step pipeline with an explanation generated from computed signals
+- ✅ **Batch screening**: submit a JSON batch file, process asynchronously, view results per job
+- ✅ **Audit trail**: audit events stored in-memory per job and also appended (best-effort) to `audit_trail.jsonl`
+
+### How to Run
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Run the application
+python paymentscreening_v4.py
+
+# Access in browser
+http://127.0.0.1:5094
+```
+
+### Batch File Format
+
+The upload accepts JSON in any of these shapes:
+
+1) `[{...payload...}, {...payload...}]`
+2) `{ "items": [{...payload...}, ...] }`
+3) The same shape as `test_payloads.json` (it will extract the `test_scenarios.*.payload` objects)
+
+Sample file you can upload:
+
+- `test_payloads_flask_api/batch_job_sample_items.json`
+
+### Useful Endpoints
+
+- `POST /jobs/submit` (multipart form upload field: `batch_file`)
+- `GET /api/jobs`
+- `GET /api/jobs/<job_id>`
+- `GET /api/jobs/<job_id>/audit`
+
+---
+
+## 2. Flask Web UI Application (v3)
 
 **File**: `paymentscreening_v3.py`
 
@@ -108,7 +165,7 @@ The floating panel generates audit-ready compliance explanations including:
 
 ---
 
-## 2. Flask REST API
+## 3. Flask REST API
 
 **File**: `payment_screening_api.py`
 
