@@ -13,6 +13,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from flask import Flask, jsonify, redirect, render_template_string, request, url_for
 
+from agentic_payment_agent import screen_payment_agentic
+
 app = Flask(__name__)
 
 # -----------------------------
@@ -292,114 +294,6 @@ def _coerce_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
 # -----------------------------
 # Agentic flow (traceable)
 # -----------------------------
-@dataclass
-class AuditEvent:
-    ts: str
-    job_id: str
-    item_index: Optional[int]
-    step: str
-    message: str
-    data: Dict[str, Any]
-
-
-AUDIT_LOG_PATH = os.path.join(os.path.dirname(__file__), "audit_trail.jsonl")
-
-
-def _append_audit(event: AuditEvent) -> None:
-    line = {
-        "ts": event.ts,
-        "job_id": event.job_id,
-        "item_index": event.item_index,
-        "step": event.step,
-        "message": event.message,
-        "data": event.data,
-    }
-    try:
-        with open(AUDIT_LOG_PATH, "a", encoding="utf-8") as f:
-            f.write(json.dumps(line, ensure_ascii=False) + "\n")
-    except Exception:
-        # Best effort: still keep in-memory audit.
-        pass
-
-
-def generate_explanation(payload: Dict[str, Any], result: Dict[str, Any]) -> str:
-    decision = result.get("decision")
-    reason = result.get("reason")
-    best_score = result.get("best_score")
-    best_role = result.get("best_role")
-    best_wl = result.get("best_wl") or {}
-    breakdown = result.get("breakdown") or {}
-    sanction_flag = result.get("sanction_flag") or False
-    sanction_reasons = result.get("sanction_reasons") or []
-
-    drivers = []
-    for k in ("name", "address", "dob", "country"):
-        try:
-            drivers.append((k, float(breakdown.get(k, 0.0))))
-        except Exception:
-            pass
-    drivers.sort(key=lambda x: x[1], reverse=True)
-
-    title = "Payment Screening Explanation (Agentic)"
-    out = [title, "=" * len(title)]
-    out.append(
-        " • "
-        + " | ".join(
-            [
-                f"Decision: {decision}",
-                f"Reason: {reason}",
-                f"Best role: {best_role}",
-                f"Best score: {float(best_score):.3f}" if best_score is not None else "Best score: —",
-            ]
-        )
-    )
-
-    out.append("\nMatched Entity")
-    out.append("-------------")
-    if best_wl:
-        out.append(
-            f"{best_wl.get('name','—')} (List: {best_wl.get('list','—')}; Category: {best_wl.get('category','—')}; Country: {best_wl.get('country','—')}; DOB: {best_wl.get('dob','—')})"
-        )
-    else:
-        out.append("—")
-
-    out.append("\nKey Drivers")
-    out.append("-----------")
-    if drivers:
-        for k, v in drivers:
-            out.append(f"- {k.capitalize()}: {v:.3f}")
-    else:
-        out.append("- —")
-
-    out.append("\nSanctions")
-    out.append("---------")
-    if sanction_flag:
-        out.append("Sanctions hit detected:")
-        for r in sanction_reasons:
-            out.append(f"- {r}")
-    else:
-        out.append("No sanctions hit detected.")
-
-    out.append("\nAutomated Decisioning")
-    out.append("---------------------")
-    if decision == "ESCALATE":
-        out.append("- Place payment on hold and route to Level-2 review.")
-        out.append("- Validate KYC/KYB and re-screen against freshest lists.")
-        out.append("- If confirmed sanctions, follow blocking/reporting SOP.")
-    else:
-        out.append("- Proceed with STP release per policy.")
-        out.append("- Retain logs, scores and evidence for audit.")
-
-    out.append("\nEvidence Snapshot")
-    out.append("-----------------")
-    out.append(
-        f"PAYER: {payload.get('payer_name','')} | {payload.get('payer_country','')} | {payload.get('payer_address','')}"
-    )
-    out.append(
-        f"BENEFICIARY: {payload.get('benef_name','')} | {payload.get('benef_country','')} | {payload.get('benef_address','')}"
-    )
-
-    return "\n".join(out)
 
 
 def run_agentic_screening(
@@ -409,138 +303,14 @@ def run_agentic_screening(
     item_index: Optional[int],
     audit_sink: List[Dict[str, Any]],
 ) -> Dict[str, Any]:
-    def audit(step: str, message: str, data: Optional[Dict[str, Any]] = None) -> None:
-        ev = AuditEvent(
-            ts=_utc_now_iso(),
-            job_id=job_id,
-            item_index=item_index,
-            step=step,
-            message=message,
-            data=data or {},
-        )
-        audit_sink.append(
-            {
-                "ts": ev.ts,
-                "job_id": ev.job_id,
-                "item_index": ev.item_index,
-                "step": ev.step,
-                "message": ev.message,
-                "data": ev.data,
-            }
-        )
-        _append_audit(ev)
-
-    audit("sample_data", "Received input payload", {"keys": sorted(list(payload.keys()))})
-
-    payload = _coerce_payload(payload)
-    ok, missing = _validate_payload(payload)
-    if not ok:
-        audit("validate", "Payload missing required fields", {"missing": missing})
-        raise ValueError(f"Missing required fields: {missing}")
-
-    audit(
-        "algorithms",
-        "Prepared normalization + similarity algorithms",
-        {"algorithms": ["normalize_text", "Jaro-Winkler", "Jaccard"]},
+    # Delegate to the reusable agent module so this UI, the REST API, and n8n
+    # can all share the same execution trace + audit trail.
+    return screen_payment_agentic(
+        payload,
+        job_id=job_id,
+        item_index=int(item_index or 0),
+        audit_events=audit_sink,
     )
-
-    # Score all payer/beneficiary candidates
-    audit("match", "Matching against watchlist", {"watchlist_size": len(WATCHLIST)})
-
-    candidates = []
-    sanction_flag_any = False
-    sanction_reasons: List[str] = []
-
-    for wl in WATCHLIST:
-        s_payer, bd_payer = composite_risk_score(
-            payload["payer_name"],
-            payload["payer_address"],
-            payload["payer_country"],
-            payload.get("payer_dob", ""),
-            wl,
-        )
-        candidates.append(("PAYER", wl, s_payer, bd_payer))
-
-        s_benef, bd_benef = composite_risk_score(
-            payload["benef_name"],
-            payload["benef_address"],
-            payload["benef_country"],
-            payload.get("benef_dob", ""),
-            wl,
-        )
-        candidates.append(("BENEFICIARY", wl, s_benef, bd_benef))
-
-        for bd, role in [(bd_payer, "PAYER"), (bd_benef, "BENEFICIARY")]:
-            if bd.get("sanction_party_country"):
-                sanction_flag_any = True
-                sanction_reasons.append(
-                    f"{role} country in sanctioned list: {bd.get('sanction_party_country_name')}"
-                )
-            if bd.get("sanction_address_hit"):
-                sanction_flag_any = True
-                sanction_reasons.append(
-                    f"{role} address mentions sanctioned country: {bd.get('sanction_address_match')}"
-                )
-
-    best = max(candidates, key=lambda x: x[2]) if candidates else None
-    best_role, best_wl, best_score, best_breakdown = best if best else (None, None, 0.0, {})
-
-    audit(
-        "scoring",
-        "Computed composite risk score",
-        {
-            "threshold": THRESHOLD,
-            "best_role": best_role,
-            "best_score": float(best_score or 0.0),
-            "breakdown": best_breakdown,
-        },
-    )
-
-    if sanction_flag_any:
-        decision = "ESCALATE"
-        reason = "Sanctioned Country"
-    else:
-        decision = "ESCALATE" if float(best_score or 0.0) >= THRESHOLD else "RELEASE"
-        reason = "Score Threshold" if decision == "ESCALATE" else "Below Threshold"
-
-    audit(
-        "decision",
-        "Applied automated decision policy",
-        {
-            "decision": decision,
-            "reason": reason,
-            "sanction_flag": sanction_flag_any,
-            "sanction_reasons": sanction_reasons,
-        },
-    )
-
-    sorted_cands = sorted(
-        [
-            {"role": r, "wl": w, "score": s, "breakdown": bd}
-            for r, w, s, bd in candidates
-            if w is not None
-        ],
-        key=lambda z: z["score"],
-        reverse=True,
-    )
-
-    result = {
-        "decision": decision,
-        "reason": reason,
-        "best_role": best_role,
-        "best_wl": best_wl,
-        "best_score": float(best_score or 0.0),
-        "breakdown": best_breakdown,
-        "sanction_flag": sanction_flag_any,
-        "sanction_reasons": sanction_reasons,
-        "candidates": sorted_cands,
-    }
-
-    explanation = generate_explanation(payload, result)
-    result["explanation"] = explanation
-
-    audit("explain", "Generated compliance explanation", {"chars": len(explanation)})
-    return result
 
 
 # -----------------------------
@@ -701,44 +471,45 @@ def _parse_batch_json(raw: bytes) -> List[Dict[str, Any]]:
 
 
 def _load_test_scenarios() -> Dict[str, Dict[str, Any]]:
-    base_dir = os.path.dirname(__file__)
+  base_dir = os.path.dirname(__file__)
 
-    # Prefer per-scenario payload files used for API testing, so edits to
-    # test_payloads_flask_api/*.json immediately reflect in the UI.
-    payload_dir = os.path.join(base_dir, "test_payloads_flask_api")
-    out: Dict[str, Dict[str, Any]] = {}
-    if os.path.isdir(payload_dir):
-        try:
-            for fname in os.listdir(payload_dir):
-                if not (fname.startswith("payload_") and fname.endswith(".json")):
-                    continue
-                scenario_name = fname[len("payload_") : -len(".json")]
-                fpath = os.path.join(payload_dir, fname)
-                try:
-                    with open(fpath, "r", encoding="utf-8") as f:
-                        payload = json.load(f)
-                    if isinstance(payload, dict):
-                        out[scenario_name] = payload
-                except Exception:
-                    continue
-        except Exception:
-            out = {}
-
-    if out:
-        return out
-
-    # Fallback to legacy single file.
-    path = os.path.join(base_dir, "test_payloads.json")
+  # Prefer per-scenario payload files used for API testing, so edits to
+  # test_payloads_flask_api/*.json immediately reflect in the UI.
+  payload_dir = os.path.join(base_dir, "test_payloads_flask_api")
+  out: Dict[str, Dict[str, Any]] = {}
+  if os.path.isdir(payload_dir):
     try:
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        scenarios = data.get("test_scenarios") or {}
-        for name, entry in scenarios.items():
-            if isinstance(entry, dict) and isinstance(entry.get("payload"), dict):
-                out[name] = entry["payload"]
-        return out
+      for fname in os.listdir(payload_dir):
+        if not (fname.startswith("payload_") and fname.endswith(".json")):
+          continue
+        scenario_name = fname[len("payload_") : -len(".json")]
+        fpath = os.path.join(payload_dir, fname)
+        try:
+          with open(fpath, "r", encoding="utf-8") as f:
+            payload = json.load(f)
+          if isinstance(payload, dict):
+            out[scenario_name] = payload
+        except Exception:
+          # Best-effort load; skip malformed files
+          continue
     except Exception:
-        return {}
+      out = {}
+
+  if out:
+    return out
+
+  # Fallback to legacy single file.
+  path = os.path.join(base_dir, "test_payloads.json")
+  try:
+    with open(path, "r", encoding="utf-8") as f:
+      data = json.load(f)
+    scenarios = data.get("test_scenarios") or {}
+    for name, entry in scenarios.items():
+      if isinstance(entry, dict) and isinstance(entry.get("payload"), dict):
+        out[name] = entry["payload"]
+    return out
+  except Exception:
+    return {}
 
 
 # -----------------------------
@@ -753,11 +524,29 @@ TEMPLATE = """
   <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
   <link href=\"https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css\" rel=\"stylesheet\">
   <style>
-    body { background: #0f172a; color: #e2e8f0; }
+    :root {
+      --bs-body-bg: #0f172a;
+      --bs-body-color: #e2e8f0;
+      --bs-secondary-color: #94a3b8;
+      --bs-border-color: rgba(148, 163, 184, .25);
+    }
+
+    body { background: var(--bs-body-bg); color: var(--bs-body-color); }
     .card { border-radius: 1rem; box-shadow: 0 10px 25px rgba(0,0,0,.3); }
     .muted { color: #94a3b8; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace; }
-    pre { white-space: pre-wrap; }
+    .kv { display: grid; grid-template-columns: 140px 1fr; gap: .25rem .75rem; }
+    .kv .k { color: var(--bs-secondary-color); }
+    pre {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      line-height: 1.35;
+      font-size: 0.92rem;
+      color: var(--bs-body-color);
+      border-color: var(--bs-border-color) !important;
+    }
+    pre.explain { max-height: 520px; overflow: auto; }
   </style>
 </head>
 <body>
@@ -766,7 +555,7 @@ TEMPLATE = """
     <div class=\"card-header bg-dark\">
       <div class=\"d-flex justify-content-between align-items-start\">
         <div>
-          <h3 class=\"m-0\">Payment Screening v4 (Agentic Flow)</h3>
+          <h3 class=\"m-0\">Payment Screening For Compliance (Agentic Flow)</h3>
           <div class=\"muted\">Sample data → Algorithms → Scoring → Automated decision → Explanation • Batch jobs + audit trail</div>
         </div>
         <div class=\"text-end\">
@@ -828,7 +617,7 @@ TEMPLATE = """
               <form method=\"get\" class=\"mb-3\">
                 <label class=\"form-label\">Load sample scenario</label>
                 <div class=\"input-group\">
-                                    <select class=\"form-select\" name=\"scenario\" onchange=\"this.form.submit()\">
+                  <select class=\"form-select\" name=\"scenario\" onchange=\"this.form.submit()\">
                     <option value=\"\">-- Choose --</option>
                     {% for s in scenarios %}
                       <option value=\"{{ s }}\" {% if s == selected_scenario %}selected{% endif %}>{{ s }}</option>
@@ -836,7 +625,7 @@ TEMPLATE = """
                   </select>
                   <button class=\"btn btn-outline-light\" type=\"submit\">Load</button>
                 </div>
-                                <div class=\"muted mt-1\">Uses data from <span class=\"mono\">test_payloads_flask_api/</span> (fallback: <span class=\"mono\">test_payloads.json</span>)</div>
+                <div class=\"muted mt-1\">Uses data from <span class=\"mono\">test_payloads_flask_api/</span> (fallback: <span class=\"mono\">test_payloads.json</span>)</div>
               </form>
 
               <form method=\"post\" action=\"{{ url_for('screen_sync') }}\" class=\"row g-2\">
@@ -864,14 +653,32 @@ TEMPLATE = """
               {% if sync_result %}
                 <hr class=\"border-secondary\" />
                 <h6 class=\"text-warning\">Result</h6>
-                <div class=\"border rounded p-3\">
-                  <div><b>Decision:</b> {{ sync_result.decision }} ({{ sync_result.reason }})</div>
-                  <div><b>Best:</b> {{ sync_result.best_role }} • Score {{ sync_result.best_score | round(3) }}</div>
-                  <div class=\"muted\">Sanction flag: {{ sync_result.sanction_flag }}</div>
+                {% set _dec = (sync_result.decision or '') %}
+                {% set _dec_class = 'text-bg-secondary' %}
+                {% if _dec == 'ESCALATE' %}{% set _dec_class = 'text-bg-danger' %}{% endif %}
+                {% if _dec == 'RELEASE' %}{% set _dec_class = 'text-bg-success' %}{% endif %}
+
+                <div class=\"border rounded p-3 bg-black\">
+                  <div class=\"d-flex flex-wrap gap-2 align-items-center\">
+                    <span class=\"badge {{ _dec_class }}\">{{ sync_result.decision }}</span>
+                    <span class=\"badge text-bg-dark\">{{ sync_result.reason }}</span>
+                    {% if sync_result.sanction_flag %}
+                      <span class=\"badge text-bg-warning text-dark\">Sanctions: HIT</span>
+                    {% else %}
+                      <span class=\"badge text-bg-success\">Sanctions: Clear</span>
+                    {% endif %}
+                  </div>
+
+                  <div class=\"kv mt-3\">
+                    <div class=\"k\">Best match</div>
+                    <div class=\"mono\">{{ sync_result.best_role or '—' }}</div>
+                    <div class=\"k\">Best score</div>
+                    <div class=\"mono\">{{ sync_result.best_score | round(3) }}</div>
+                  </div>
                 </div>
                 <div class=\"mt-3\">
                   <h6 class=\"text-warning\">Explanation</h6>
-                  <pre class=\"border rounded p-3 bg-black\">{{ sync_result.explanation }}</pre>
+                  <pre class=\"explain mono border rounded p-3 bg-black\">{{ sync_result.explanation }}</pre>
                 </div>
               {% endif %}
             </div>
@@ -992,10 +799,26 @@ JOB_TEMPLATE = """
   <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
   <link href=\"https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css\" rel=\"stylesheet\">
   <style>
-    body { background: #0f172a; color: #e2e8f0; }
+    :root {
+      --bs-body-bg: #0f172a;
+      --bs-body-color: #e2e8f0;
+      --bs-secondary-color: #94a3b8;
+      --bs-border-color: rgba(148, 163, 184, .25);
+    }
+
+    body { background: var(--bs-body-bg); color: var(--bs-body-color); }
     .muted { color: #94a3b8; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace; }
-    pre { white-space: pre-wrap; }
+    pre {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      line-height: 1.35;
+      font-size: 0.92rem;
+      color: var(--bs-body-color);
+      border-color: var(--bs-border-color) !important;
+    }
+    pre.explain { max-height: 520px; overflow: auto; }
   </style>
 </head>
 <body>
@@ -1034,14 +857,20 @@ JOB_TEMPLATE = """
         {% for r in job.results %}
           <tr>
             <td>{{ r.index }}</td>
-            <td>{{ r.result.decision }}</td>
+            <td>
+              {% set _dec = (r.result.decision or '') %}
+              {% set _dec_class = 'text-bg-secondary' %}
+              {% if _dec == 'ESCALATE' %}{% set _dec_class = 'text-bg-danger' %}{% endif %}
+              {% if _dec == 'RELEASE' %}{% set _dec_class = 'text-bg-success' %}{% endif %}
+              <span class=\"badge {{ _dec_class }}\">{{ r.result.decision }}</span>
+            </td>
             <td>{{ r.result.reason }}</td>
             <td>{{ r.result.best_role }}</td>
             <td>{{ r.result.best_score | round(3) }}</td>
             <td>
               <details>
                 <summary class=\"text-warning\">Explanation</summary>
-                <pre class=\"border rounded p-2 bg-black\">{{ r.result.explanation }}</pre>
+                <pre class=\"explain mono border rounded p-2 bg-black\">{{ r.result.explanation }}</pre>
               </details>
             </td>
           </tr>
@@ -1056,7 +885,7 @@ JOB_TEMPLATE = """
   <hr class=\"border-secondary\" />
   <h5 class=\"text-info\">Audit Trail (In-Memory)</h5>
   <div class=\"muted\">Also appended to <span class=\"mono\">audit_trail.jsonl</span>.</div>
-  <pre class=\"border rounded p-3 bg-black mt-2\">{% for a in job.audit %}{{ a.ts }}  [{{ a.step }}]  item={{ a.item_index if a.item_index is not none else '-' }}  {{ a.message }}\n{% endfor %}{% if not job.audit %}—{% endif %}</pre>
+  <pre class=\"explain mono border rounded p-3 bg-black mt-2\">{% for a in job.audit %}{{ a.ts }}  [{{ a.step }}]  item={{ a.item_index if a.item_index is not none else '-' }}  {{ a.message }}\n{% endfor %}{% if not job.audit %}—{% endif %}</pre>
 </div>
 </body>
 </html>

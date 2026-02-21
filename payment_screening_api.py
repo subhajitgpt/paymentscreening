@@ -2,7 +2,10 @@
 from flask import Flask, request, jsonify
 import re
 import json
+import uuid
 from datetime import datetime
+
+from agentic_payment_agent import screen_payment_agentic
 
 app = Flask(__name__)
 
@@ -354,8 +357,13 @@ def screen():
             "reference": data.get("reference", "")
         }
         
-        # Screen the payment
-        result = screen_payment(payload)
+        # Screen the payment (agentic core). Keep the response shape stable.
+        result = screen_payment_agentic(
+            payload,
+            job_id="api-" + uuid.uuid4().hex,
+            item_index=0,
+            audit_events=[],
+        )
         
         # Add request metadata to response
         response = {
@@ -372,6 +380,48 @@ def screen():
         
     except ValueError as e:
         return jsonify({"error": f"Invalid data format: {str(e)}"}), 400
+    except Exception as e:
+        return jsonify({"error": f"Internal server error: {str(e)}"}), 500
+
+
+@app.route("/agent/screen", methods=["POST"])
+def agent_screen():
+    """Webhook-friendly agent endpoint for workflow tools like n8n.
+
+    Accepts the normal payload plus optional:
+    - use_llm_explainer: boolean (best-effort; falls back to deterministic)
+
+    Returns:
+    - job_id
+    - result (decision, scores, explanation)
+    - audit (step-by-step trace)
+    """
+
+    try:
+        data = request.get_json() or {}
+
+        job_id = "agent-" + uuid.uuid4().hex
+        audit: list = []
+
+        result = screen_payment_agentic(
+            data,
+            job_id=job_id,
+            item_index=0,
+            audit_events=audit,
+        )
+
+        return (
+            jsonify(
+                {
+                    "timestamp": datetime.now().isoformat(),
+                    "job_id": job_id,
+                    "result": result,
+                    "audit": audit,
+                }
+            ),
+            200,
+        )
+
     except Exception as e:
         return jsonify({"error": f"Internal server error: {str(e)}"}), 500
 

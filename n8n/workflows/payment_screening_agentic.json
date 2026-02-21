@@ -1,0 +1,72 @@
+{
+  "name": "Payment Screening (Agentic) - Webhook to Python",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "payment-screening",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        420,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5000/agent/screen",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body ?? $json) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "call-python",
+      "name": "Call Python Agent API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        700,
+        240
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Call Python Agent API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionTimeout": 120
+  },
+  "versionId": "00000000-0000-0000-0000-000000000000",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "payment-screening-agentic"
+}

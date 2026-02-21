@@ -17,6 +17,9 @@ PaymentScreening/
 ├── paymentscreening_v4.py          # Flask Web UI (Agentic flow + KPIs + Batch jobs + audit)
 ├── paymentscreening_v3.py          # Flask Web UI Application
 ├── payment_screening_api.py         # Flask REST API
+├── screening_core.py               # Shared screening logic (watchlist/sanctions/scoring)
+├── agentic_payment_agent.py        # Agentic workflow wrapper (steps + audit + explanation)
+├── n8n/workflows/payment_screening_agentic.json  # n8n workflow export (webhook → Python agent)
 ├── test_payloads.json              # Test scenarios documentation
 ├── test_payloads_flask_api/        # Individual test payloads for API testing
 │   ├── payload_scenario_1_high_risk_match.json
@@ -232,6 +235,137 @@ Content-Type: application/json
   "transaction_details": {
     "amount": 12500.00,
     "currency": "USD",
+
+---
+
+## 4. Agentic Workflow + n8n (GitHub Showcase)
+
+This repo now includes a reusable **agentic workflow** (step-by-step execution + audit trail) and an **n8n** workflow export so you can demo an end-to-end integration.
+
+### What’s Agentic Here?
+
+This is an “agentic” workflow in the practical engineering sense: a **stateful orchestrator** runs a sequence of explicit steps, calls deterministic “tools” (screening functions), and emits an **audit trail** that explains *what happened and why*.
+
+- The screening run is modeled as steps:
+  - **sample_data** → **validate** → **match** → **decision** → **explain**
+- The same agent implementation can be called from:
+  - Flask UI (batch/sync)
+  - REST API
+  - workflow automation (n8n)
+- Each step emits audit events to both:
+  - in-memory list (returned to callers like n8n)
+  - append-only JSONL file: `audit_trail.jsonl`
+
+### Flow Steps (What a Reviewer Sees)
+
+- **sample_data**: payload is received and coerced into a consistent shape
+- **validate**: required fields are checked (fail-fast)
+- **match**: payload is scored against watchlist entries; candidate list is produced
+- **decision**: policy is applied (hard sanctions rule + threshold)
+- **explain**: an audit-ready explanation is generated (deterministic by default)
+
+### Audit Trail (What’s Stored)
+
+Each audit event includes:
+
+- `ts`: UTC timestamp
+- `job_id`: correlation id for the run
+- `item_index`: supports batch runs
+- `step`: which step emitted the event
+- `message` + `data`: human-readable + machine-parsable details
+
+### 4.1 Run the Python Agent API
+
+```bash
+pip install -r requirements.txt
+python payment_screening_api.py
+```
+
+Agent endpoint for automation tools:
+
+- `POST http://127.0.0.1:5000/agent/screen`
+
+Example:
+
+```bash
+curl -X POST http://127.0.0.1:5000/agent/screen \
+  -H "Content-Type: application/json" \
+  -d @test_payloads_flask_api/payload_scenario_2_sanctioned_country.json
+```
+
+Response shape (trimmed):
+
+```json
+{
+  "timestamp": "2026-02-13T12:00:00.000000",
+  "job_id": "agent-...",
+  "result": {
+    "decision": "ESCALATE",
+    "reason": "Sanctioned Country",
+    "best_role": "BENEFICIARY",
+    "best_score": 0.91,
+    "explanation": "...",
+    "candidates": ["..."],
+    "job_id": "agent-..."
+  },
+  "audit": [
+    {"ts": "...", "step": "sample_data", "message": "...", "data": {}},
+    {"ts": "...", "step": "validate", "message": "...", "data": {}},
+    {"ts": "...", "step": "match", "message": "...", "data": {}},
+    {"ts": "...", "step": "decision", "message": "...", "data": {}},
+    {"ts": "...", "step": "explain", "message": "...", "data": {}}
+  ]
+}
+```
+
+### 4.2 Import the n8n Workflow
+
+1. Open n8n
+2. Import the workflow JSON:
+   - `n8n/workflows/payment_screening_agentic.json`
+3. Activate the workflow
+4. Trigger it by calling the n8n webhook URL (shown in the Webhook node)
+
+Note: the workflow calls `http://127.0.0.1:5000/agent/screen`. If your n8n runs in Docker, change it to `http://host.docker.internal:5000/agent/screen`.
+
+### Why This is a Good Consulting Demo
+
+- Shows **integration**: n8n → webhook → Python service
+- Shows **observability**: step-level audit trail and correlation ids
+- Shows **policy + controls**: deterministic decisioning, explainability, and fail-fast validation
+- Shows **extensibility**: optional LLM rewrite step without coupling business logic to the model
+
+### 4.3 Optional: LLM Rewriter for the Explanation
+
+If you want the *explanation* step to be rewritten by an LLM (best-effort; falls back to deterministic):
+
+1. Set env vars:
+   - `OPENAI_API_KEY`
+   - (optional) `OPENAI_BASE_URL` and `OPENAI_MODEL`
+2. Include `"use_llm_explainer": true` in the request payload.
+
+Example:
+
+```bash
+curl -X POST http://127.0.0.1:5000/agent/screen \
+  -H "Content-Type: application/json" \
+  -d @- << 'JSON'
+{
+  "use_llm_explainer": true,
+  "payer_name": "Global Trade LLC",
+  "payer_address": "PO Box 12345, Dubai, UAE",
+  "payer_country": "AE",
+  "payer_dob": "",
+  "benef_name": "John Smith",
+  "benef_address": "123 Main Street, London, UK",
+  "benef_country": "GB",
+  "benef_dob": "",
+  "amount": 12500,
+  "currency": "USD",
+  "reference": "Invoice 2025-10-ACME"
+}
+JSON
+```
     "reference": "Invoice 2025-10-ACME"
   }
 }
