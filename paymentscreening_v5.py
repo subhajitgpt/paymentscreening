@@ -529,6 +529,14 @@ TEMPLATE = """
       --bs-body-color: #e2e8f0;
       --bs-secondary-color: #94a3b8;
       --bs-border-color: rgba(148, 163, 184, .25);
+
+      /* Make tab headers high-contrast on dark UI */
+      --bs-nav-link-color: var(--bs-body-color);
+      --bs-nav-link-hover-color: #ffffff;
+      --bs-nav-tabs-border-color: var(--bs-border-color);
+      --bs-nav-tabs-link-active-color: var(--bs-body-color);
+      --bs-nav-tabs-link-active-bg: var(--bs-body-bg);
+      --bs-nav-tabs-link-active-border-color: var(--bs-border-color);
     }
 
     body { background: var(--bs-body-bg); color: var(--bs-body-color); }
@@ -547,6 +555,67 @@ TEMPLATE = """
       border-color: var(--bs-border-color) !important;
     }
     pre.explain { max-height: 520px; overflow: auto; }
+
+    /* Tab header readability */
+    .nav-tabs {
+      border-bottom-color: var(--bs-border-color);
+      gap: .25rem;
+    }
+    .nav-tabs .nav-link {
+      color: var(--bs-body-color) !important;
+      font-weight: 700;
+      font-size: 1.02rem;
+      letter-spacing: .2px;
+      padding: .65rem .95rem;
+      border-color: transparent;
+      border-top-left-radius: .75rem;
+      border-top-right-radius: .75rem;
+    }
+    .nav-tabs .nav-link:hover {
+      color: #ffffff !important;
+      border-color: var(--bs-border-color) var(--bs-border-color) transparent;
+      background: rgba(226, 232, 240, .06);
+    }
+    .nav-tabs .nav-link.active {
+      color: var(--bs-body-color) !important;
+      background-color: var(--bs-body-bg) !important;
+      border-color: var(--bs-border-color) var(--bs-border-color) var(--bs-body-bg) !important;
+    }
+    .nav-tabs .nav-link:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 .2rem rgba(13, 202, 240, .25);
+    }
+
+    /* File input readability ("Choose File" + "No file chosen") */
+    input[type="file"].form-control {
+      background-color: var(--bs-body-bg);
+      color: var(--bs-body-color);
+      border-color: var(--bs-border-color);
+    }
+    input[type="file"].form-control::file-selector-button {
+      margin-right: .75rem;
+      background: rgba(226, 232, 240, .10);
+      color: var(--bs-body-color);
+      border: 1px solid var(--bs-border-color);
+      border-radius: .5rem;
+      padding: .45rem .75rem;
+      font-weight: 700;
+    }
+    input[type="file"].form-control:hover::file-selector-button {
+      background: rgba(226, 232, 240, .16);
+    }
+    input[type="file"].form-control::-webkit-file-upload-button {
+      margin-right: .75rem;
+      background: rgba(226, 232, 240, .10);
+      color: var(--bs-body-color);
+      border: 1px solid var(--bs-border-color);
+      border-radius: .5rem;
+      padding: .45rem .75rem;
+      font-weight: 700;
+    }
+    input[type="file"].form-control:hover::-webkit-file-upload-button {
+      background: rgba(226, 232, 240, .16);
+    }
   </style>
 </head>
 <body>
